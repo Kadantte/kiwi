@@ -1,5 +1,5 @@
 /*-----------------------------------------------------------------------------
-| Copyright (c) 2013-2019, Nucleic Development Team.
+| Copyright (c) 2013-2026, Nucleic Development Team.
 |
 | Distributed under the terms of the Modified BSD License.
 |
@@ -22,6 +22,10 @@ extern PyObject* UnknownConstraint;
 extern PyObject* DuplicateEditVariable;
 
 extern PyObject* UnknownEditVariable;
+
+extern PyObject* DuplicateStay;
+
+extern PyObject* UnknownStay;
 
 extern PyObject* BadRequiredStrength;
 

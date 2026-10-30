@@ -1,5 +1,5 @@
 /*-----------------------------------------------------------------------------
-| Copyright (c) 2013-2017, Nucleic Development Team.
+| Copyright (c) 2013-2026, Nucleic Development Team.
 |
 | Distributed under the terms of the Modified BSD License.
 |
@@ -113,6 +113,50 @@ public:
     const char *what() const noexcept
     {
         return "The edit variable has already been added to the solver.";
+    }
+
+    const Variable &variable() const
+    {
+        return m_variable;
+    }
+
+private:
+    Variable m_variable;
+};
+
+class UnknownStay : public std::exception
+{
+
+public:
+    UnknownStay(Variable variable) : m_variable(std::move(variable)) {}
+
+    ~UnknownStay() noexcept {}
+
+    const char *what() const noexcept
+    {
+        return "The variable has no stay in the solver.";
+    }
+
+    const Variable &variable() const
+    {
+        return m_variable;
+    }
+
+private:
+    Variable m_variable;
+};
+
+class DuplicateStay : public std::exception
+{
+
+public:
+    DuplicateStay(Variable variable) : m_variable(std::move(variable)) {}
+
+    ~DuplicateStay() noexcept {}
+
+    const char *what() const noexcept
+    {
+        return "The variable already has a stay in the solver.";
     }
 
     const Variable &variable() const

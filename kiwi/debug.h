@@ -1,5 +1,5 @@
 /*-----------------------------------------------------------------------------
-| Copyright (c) 2013-2017, Nucleic Development Team.
+| Copyright (c) 2013-2026, Nucleic Development Team.
 |
 | Distributed under the terms of the Modified BSD License.
 |
@@ -44,6 +44,10 @@ public:
         out << "Edit Variables" << std::endl;
         out << "--------------" << std::endl;
         dump(solver.m_edits, out);
+        out << std::endl;
+        out << "Stays" << std::endl;
+        out << "-----" << std::endl;
+        dump(solver.m_stays, out);
         out << std::endl;
         out << "Constraints" << std::endl;
         out << "-----------" << std::endl;
@@ -91,6 +95,12 @@ public:
     {
         for (const auto &editPair : edits)
             out << editPair.first.name() << std::endl;
+    }
+
+    static void dump(const SolverImpl::StayMap &stays, std::ostream &out)
+    {
+        for (const auto &stayPair : stays)
+            out << stayPair.first.name() << std::endl;
     }
 
     static void dump(const Row &row, std::ostream &out)

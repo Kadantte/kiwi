@@ -1,5 +1,5 @@
 /*-----------------------------------------------------------------------------
-| Copyright (c) 2013-2019, Nucleic Development Team.
+| Copyright (c) 2013-2026, Nucleic Development Team.
 |
 | Distributed under the terms of the Modified BSD License.
 |
@@ -32,6 +32,15 @@ Variable_new( PyTypeObject* type, PyObject* args, PyObject* kwargs )
 		&name, &context ) )
 		return 0;
 
+	std::string c_name;
+	if( name != 0 )
+	{
+		if( !PyUnicode_Check( name ) )
+			return cppy::type_error( name, "str" );
+		if( !convert_pystr_to_str( name, c_name ) )
+			return 0;
+	}
+
 	cppy::ptr pyvar( PyType_GenericNew( type, args, kwargs ) );
 	if( !pyvar )
 		return 0;
@@ -41,26 +50,26 @@ Variable_new( PyTypeObject* type, PyObject* args, PyObject* kwargs )
 
 	if( name != 0 )
 	{
-		if( !PyUnicode_Check( name ) )
-			return cppy::type_error( name, "str" );
-		std::string c_name;
-		if( !convert_pystr_to_str(name, c_name) )
-			return 0;  // LCOV_EXCL_LINE
+		ACQUIRE_GLOBAL_LOCK();
 		new( &self->variable ) kiwi::Variable( c_name );
+		RELEASE_GLOBAL_LOCK();
 	}
 	else
 	{
+		ACQUIRE_GLOBAL_LOCK();
 		new( &self->variable ) kiwi::Variable();
+		RELEASE_GLOBAL_LOCK();
 	}
 
 	return pyvar.release();
 }
 
 
-void
+int
 Variable_clear( Variable* self )
 {
 	Py_CLEAR( self->context );
+	return 0;
 }
 
 
@@ -81,7 +90,9 @@ Variable_dealloc( Variable* self )
 {
 	PyObject_GC_UnTrack( self );
 	Variable_clear( self );
+	ACQUIRE_GLOBAL_LOCK();
 	self->variable.~Variable();
+	RELEASE_GLOBAL_LOCK();
 	Py_TYPE( self )->tp_free( pyobject_cast( self ) );
 }
 
@@ -89,14 +100,20 @@ Variable_dealloc( Variable* self )
 PyObject*
 Variable_repr( Variable* self )
 {
-	return PyUnicode_FromString( self->variable.name().c_str() );
+	ACQUIRE_GLOBAL_LOCK();
+	std::string name = self->variable.name();
+	RELEASE_GLOBAL_LOCK();
+	return PyUnicode_FromString( name.c_str() );
 }
 
 
 PyObject*
 Variable_name( Variable* self )
 {
-	return PyUnicode_FromString( self->variable.name().c_str() );
+	ACQUIRE_GLOBAL_LOCK();
+	std::string name = self->variable.name();
+	RELEASE_GLOBAL_LOCK();
+	return PyUnicode_FromString( name.c_str() );
 }
 
 
@@ -108,13 +125,17 @@ Variable_setName( Variable* self, PyObject* pystr )
    std::string str;
    if( !convert_pystr_to_str( pystr, str ) )
        return 0;
-   self->variable.setName( str );
+
+	ACQUIRE_GLOBAL_LOCK();
+	self->variable.setName( str );
+	RELEASE_GLOBAL_LOCK();
+
 	Py_RETURN_NONE;
 }
 
 
 PyObject*
-Variable_context( Variable* self )
+Variable_context_locked( Variable* self )
 {
 	if( self->context )
 		return cppy::incref( self->context );
@@ -123,14 +144,32 @@ Variable_context( Variable* self )
 
 
 PyObject*
-Variable_setContext( Variable* self, PyObject* value )
+Variable_context( Variable* self )
+{
+	PyObject* context;
+	Py_BEGIN_CRITICAL_SECTION(self);
+	context = Variable_context_locked(self);
+	Py_END_CRITICAL_SECTION();
+	return context;
+}
+
+
+void
+Variable_setContext_locked( Variable* self, PyObject* value )
 {
 	if( value != self->context )
 	{
-		PyObject* temp = self->context;
-		self->context = cppy::incref( value );
-		Py_XDECREF( temp );
+		Py_XSETREF(self->context, cppy::incref( value ));
 	}
+}
+
+
+PyObject*
+Variable_setContext( Variable* self, PyObject* value )
+{
+	Py_BEGIN_CRITICAL_SECTION(self);
+	Variable_setContext_locked(self, value);
+	Py_END_CRITICAL_SECTION();
 	Py_RETURN_NONE;
 }
 
@@ -138,7 +177,23 @@ Variable_setContext( Variable* self, PyObject* value )
 PyObject*
 Variable_value( Variable* self )
 {
-	return PyFloat_FromDouble( self->variable.value() );
+	ACQUIRE_GLOBAL_LOCK();
+	double value = self->variable.value();
+	RELEASE_GLOBAL_LOCK();
+	return PyFloat_FromDouble( value );
+}
+
+
+PyObject*
+Variable_setValue( Variable* self, PyObject* pyvalue )
+{
+	double value;
+	if( !convert_to_double( pyvalue, value ) )
+		return 0;
+	ACQUIRE_GLOBAL_LOCK();
+	self->variable.setValue( value );
+	RELEASE_GLOBAL_LOCK();
+	Py_RETURN_NONE;
 }
 
 
@@ -215,6 +270,8 @@ Variable_methods[] = {
 	  "Set the context object associated with the variable." },
 	{ "value", ( PyCFunction )Variable_value, METH_NOARGS,
 	  "Get the current value of the variable." },
+	{ "setValue", ( PyCFunction )Variable_setValue, METH_O,
+	  "Set the current value of the variable." },
 	{ 0 } // sentinel
 };
 

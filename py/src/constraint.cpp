@@ -1,13 +1,13 @@
 /*-----------------------------------------------------------------------------
-| Copyright (c) 2013-2019, Nucleic Development Team.
+| Copyright (c) 2013-2026, Nucleic Development Team.
 |
 | Distributed under the terms of the Modified BSD License.
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
+#include <cppy/cppy.h>
 #include <algorithm>
 #include <sstream>
-#include <cppy/cppy.h>
 #include <kiwi/kiwi.h>
 #include "types.h"
 #include "util.h"
@@ -44,14 +44,20 @@ Constraint_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
     cn->expression = reduce_expression(pyexpr);
     if (!cn->expression)
         return 0;
+
+    ACQUIRE_GLOBAL_LOCK();
     kiwi::Expression expr(convert_to_kiwi_expression(cn->expression));
     new (&cn->constraint) kiwi::Constraint(expr, op, strength);
+    RELEASE_GLOBAL_LOCK();
+
     return pycn.release();
 }
 
-void Constraint_clear(Constraint *self)
+int
+Constraint_clear(Constraint *self)
 {
     Py_CLEAR(self->expression);
+    return 0;
 }
 
 int Constraint_traverse(Constraint *self, visitproc visit, void *arg)
@@ -68,7 +74,9 @@ void Constraint_dealloc(Constraint *self)
 {
     PyObject_GC_UnTrack(self);
     Constraint_clear(self);
+    ACQUIRE_GLOBAL_LOCK();
     self->constraint.~Constraint();
+    RELEASE_GLOBAL_LOCK();
     Py_TYPE(self)->tp_free(pyobject_cast(self));
 }
 
@@ -83,11 +91,21 @@ Constraint_repr(Constraint *self)
         PyObject *item = PyTuple_GET_ITEM(expr->terms, i);
         Term *term = reinterpret_cast<Term *>(item);
         stream << term->coefficient << " * ";
-        stream << reinterpret_cast<Variable *>(term->variable)->variable.name();
+        ACQUIRE_GLOBAL_LOCK();
+        std::string name = reinterpret_cast<Variable *>(term->variable)->variable.name();
+        RELEASE_GLOBAL_LOCK();
+        stream << name;
         stream << " + ";
     }
     stream << expr->constant;
-    switch (self->constraint.op())
+
+    ACQUIRE_GLOBAL_LOCK();
+    kiwi::RelationalOperator op = self->constraint.op();
+    double strength = self->constraint.strength();
+    bool violated = self->constraint.violated();
+    RELEASE_GLOBAL_LOCK();
+
+    switch (op)
     {
     case kiwi::OP_EQ:
         stream << " == 0";
@@ -99,7 +117,11 @@ Constraint_repr(Constraint *self)
         stream << " >= 0";
         break;
     }
-    stream << " | strength = " << self->constraint.strength();
+    stream << " | strength = " << strength;
+    if (violated)
+    {
+        stream << " (VIOLATED)";
+    }
     return PyUnicode_FromString(stream.str().c_str());
 }
 
@@ -113,7 +135,12 @@ PyObject *
 Constraint_op(Constraint *self)
 {
     PyObject *res = 0;
-    switch (self->constraint.op())
+
+    ACQUIRE_GLOBAL_LOCK();
+    kiwi::RelationalOperator op = self->constraint.op();
+    RELEASE_GLOBAL_LOCK();
+
+    switch (op)
     {
     case kiwi::OP_EQ:
         res = PyUnicode_FromString("==");
@@ -131,7 +158,24 @@ Constraint_op(Constraint *self)
 PyObject *
 Constraint_strength(Constraint *self)
 {
-    return PyFloat_FromDouble(self->constraint.strength());
+    ACQUIRE_GLOBAL_LOCK();
+    double strength = self->constraint.strength();
+    RELEASE_GLOBAL_LOCK();
+    return PyFloat_FromDouble(strength);
+}
+
+PyObject *
+Constraint_violated(Constraint *self)
+{
+    ACQUIRE_GLOBAL_LOCK();
+    bool violated = self->constraint.violated();
+    RELEASE_GLOBAL_LOCK();
+
+    if (violated) {
+        Py_RETURN_TRUE;
+    } else {
+        Py_RETURN_FALSE;
+    }
 }
 
 PyObject *
@@ -148,7 +192,11 @@ Constraint_or(PyObject *pyoldcn, PyObject *value)
     Constraint *oldcn = reinterpret_cast<Constraint *>(pyoldcn);
     Constraint *newcn = reinterpret_cast<Constraint *>(pynewcn);
     newcn->expression = cppy::incref(oldcn->expression);
+
+    ACQUIRE_GLOBAL_LOCK();
     new (&newcn->constraint) kiwi::Constraint(oldcn->constraint, strength);
+    RELEASE_GLOBAL_LOCK();
+
     return pynewcn;
 }
 
@@ -160,6 +208,9 @@ static PyMethodDef
          "Get the relational operator for the constraint."},
         {"strength", (PyCFunction)Constraint_strength, METH_NOARGS,
          "Get the strength for the constraint."},
+        {"violated", (PyCFunction)Constraint_violated, METH_NOARGS,
+         "Return whether or not the constraint was violated "
+         "during the last solver pass."},
         {0} // sentinel
 };
 

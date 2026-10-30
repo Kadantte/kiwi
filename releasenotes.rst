@@ -1,6 +1,95 @@
 Kiwi Release Notes
 ==================
 
+Wrappers 1.6.0 | Solver 1.6.0 | unreleased
+------------------------------------------
+- add inequalities that start out violated, required or not, with the dual
+  simplex method instead of an artificial variable or a basic error variable,
+  fixing slow insertion of constraints into large systems and spurious
+  "objective is unbounded" errors PR #251
+- add stay constraints: Solver.addStay, removeStay and hasStay, with the new
+  DuplicateStay and UnknownStay errors PR #251
+- start an edit variable at its variable's current value instead of zero PR #251
+- add Variable.setValue to the Python wrappers PR #251
+
+Wrappers 1.5.1 | Solver 1.5.1 | 28/08/2026
+------------------------------------------
+- add support for Python 3.15 PR #243
+- fix bad version reported in C++ code PR #243
+
+Wrappers 1.5.0 | Solver 1.5.0 | 09/03/2026
+------------------------------------------
+- add support for CMakeLists PR #206
+- implement more move constructor in the C++ code PR #207
+- add C++ tests PR #207
+- add support for GraalPy PR #204
+- add RiscV support PR #208
+
+Wrappers 1.4.9 | Solver 1.4.2 | 10/08/2025
+------------------------------------------
+- add support for Python 3.14 PR #196 #198
+- include Python.h, or headers including Python.h, before system headers
+
+Wrappers 1.4.8 | Solver 1.4.2 | 24/12/2024
+------------------------------------------
+- drop support for Python 3.8 and 3.9 PR #189
+- do not link to MSVCP on Windows and drop windows 32 bits support PR #189
+- add support for free-threaded builds on Python 3.13 PR #190 #191
+
+Wrappers 1.4.7 | Solver 1.4.2 | 03/09/2024
+------------------------------------------
+- no library changes only fixes to the build infrastructure
+
+Wrappers 1.4.6 | Solver 1.4.2 | 03/09/2024
+------------------------------------------
+- drop support for Python 3.7 PR #183
+- add support for Python 3.13 PR #183
+- update linking strategy on Windows when building wheels PR #183
+  This is in line with Matplotlib strategy https://github.com/matplotlib/matplotlib/pull/28687
+
+Wrappers 1.4.5 | Solver 1.4.2 | 24/08/2023
+------------------------------------------
+- implement exceptions in Python PR #162
+  This allows to expose in a natural manner the object relevant to the exception:
+  constraint or edit_variable
+- add missing signature of Constraint.violated for Python wrapper PR #166
+- add support for Python 3.12
+
+Wrappers 1.4.4 | Solver 1.4.2 | 15/07/2022
+------------------------------------------
+- fix timing in shared data release procedure PR #149
+- revert use of nullpointer introduced in #142
+  Its use is not necessary anymore in 3.11.0-beta.4 and used to cause issues on
+  some platforms (see #144 ) PR #145
+
+Wrappers 1.4.3 | Solver 1.4.1 | 13/06/2022
+------------------------------------------
+- add support for Python 3.11 PR #142
+- do not install tests PR #143
+- fix packaging for latest setuptools PR #140
+
+Wrappers 1.4.2 | Solver 1.4.1 | 28/03/2022
+------------------------------------------
+- fix an issue with setuptools configuration PR #134
+
+Wrappers 1.4.1 | Solver 1.4.1 | 27/03/2022
+------------------------------------------
+- add missing include PR #129
+- re-organize the Python binding sources to properly ship type hints PR #131
+
+Wrappers 1.4.0 | Solver 1.4.0 | 14/03/2022
+------------------------------------------
+- make installation PEP517 compliant PR #125
+- add type hints  PR #125
+- add Constraint::violated() method PR #128
+- make the the c++ part of the code c++20 compliant PR #120
+- test with c++11 and c++20 PR #120
+
+Wrappers 1.3.2 | Solver 1.3.1 | 31/08/2021
+------------------------------------------
+- Add support for Python 3.10, drop official support Python 3.6 PR #103
+- Remove direct accesses to ob_type in C-API use Py_TYPE instead PR #103
+
 Wrappers 1.3.1 | Solver 1.3.1 | 11/01/2020
 ------------------------------------------
 - allow to avoid linking against VC2014_1 on windows PR #97
